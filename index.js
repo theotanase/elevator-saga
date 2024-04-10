@@ -158,12 +158,49 @@
             buttonPressedTimeouts[index] = null;
         }
 
-        const enqueueDestination = (elevator, floorNum) => {
-            const queue = elevator.destinationQueue;
-            if (!queue.includes(floorNum)) {
-                goToFloor(elevator, floorNum);
+        // const enqueueDestination = (elevator, floorNum) => {
+        //     const queue = elevator.destinationQueue;
+        //     if (!queue.includes(floorNum)) {
+        //         goToFloor(elevator, floorNum);
+        //     }
+        //
+        // }
+
+        const getRoute = (elevator) => {
+
+            // V2. optimize route - triangle
+            const pressedFloors = [...elevator.getPressedFloors()];
+            if (!pressedFloors.length) {
+                return;
             }
 
+            const currentFloor = elevator.currentFloor();
+
+            const sortedAscending = pressedFloors.sort((a, b) => a - b);
+            const lowestDestination = sortedAscending[0];
+            const highestDestination = sortedAscending[sortedAscending.length - 1];
+
+            // If all pressed floors are above, we go up in order
+            if (currentFloor <= lowestDestination) {
+                return [...sortedAscending];
+            }
+
+            // If all pressed floors are below, we go down in order
+            if (currentFloor >= highestDestination) {
+                return [...sortedAscending].reverse();
+            }
+
+            // We are in the middle, we decide if we go up or down
+            const lowerThanCurrentDescending = sortedAscending.filter(f => f <= currentFloor).reverse();
+            const higherThanCurrent = sortedAscending.filter(f => f > currentFloor);
+
+            // We go down first
+            if (Math.abs(currentFloor - lowestDestination) < Math.abs(currentFloor - highestDestination)) {
+                return [...lowerThanCurrentDescending, ...higherThanCurrent];
+            }
+
+            // We go up first
+            return [...higherThanCurrent, ...lowerThanCurrentDescending];
         }
 
         /**
@@ -171,13 +208,12 @@
          *
          * TODO - consider button presses in order if waiting time is a thing
          */
-        const setRoute = (elevator) => {
-            // V1. go in order of the pressed buttons
+        const decideRoute = (elevator) => {
 
-            for (const button of elevator.getPressedFloors()) {
-                enqueueDestination(elevator, button);
-            }
+            const route = getRoute(elevator);
 
+            elevator.destinationQueue = route;
+            elevator.checkDestinationQueue();
         };
 
         const waitForAllButtonPressesThenGo = (elevator) => {
@@ -185,7 +221,7 @@
 
             const index = getElevatorIndex(elevator);
             buttonPressedTimeouts[index] = setTimeout(() => {
-                setRoute(elevator);
+                decideRoute(elevator);
 
             }, MAX_WAIT_MS_BETWEEN_BUTTONS);
         }
@@ -200,6 +236,12 @@
             removeFloorRequests(floorNum);
         }
 
+        /**
+         * Get first request in queue for minimizing the MAX waiting time.
+         *
+         * Get the closest request in queue for minimizing AVERAGE waiting time.
+         * @param elevator
+         */
         const checkForNextJob = (elevator) => {
             if (!isIdle(elevator)) {
                 return;
