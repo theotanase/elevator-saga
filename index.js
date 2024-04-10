@@ -4,144 +4,36 @@
         const MAX_WAIT_MS_BETWEEN_BUTTONS = 100;
 
         let floorRequests = [];
-        //
+
+        const updateLights = (elevator) => {
+            const currentFloor = elevator.currentFloor();
+            const destinationQueue = elevator.destinationQueue;
+            if (destinationQueue.length === 0) {
+                elevator.goingUpIndicator(true);
+                elevator.goingDownIndicator(true);
+                return;
+            }
+
+            const nextFloor = destinationQueue[0];
+            if (nextFloor > currentFloor) {
+                elevator.goingUpIndicator(true);
+                elevator.goingDownIndicator(false);
+            } else if (nextFloor < currentFloor) {
+                elevator.goingUpIndicator(false);
+                elevator.goingDownIndicator(true);
+            } else {
+                elevator.goingUpIndicator(true);
+                elevator.goingDownIndicator(true);
+            }
+        }
+
         const goToFloor = (elevator, destination, now) => {
 
             // Maybe go gradually
             elevator.goToFloor(destination, !!now);
+            updateLights(elevator);
         }
-        //
-        // const hasElevatorQueue = (elevator) => {
-        //     return elevator.destinationQueue.length > 0;
-        // }
-        //
-        // const removeFloorRequest = (floorReq) => {
-        //     floorRequests = floorRequests.filter(r => r != floorReq);
-        // }
-        //
-        // const goToClosestRequest = (elevator) => {
-        //     if (hasElevatorQueue(elevator)) {
-        //         return;
-        //     }
-        //
-        //     const currentFloor = elevator.currentFloor();
-        //
-        //     let minDiff = 999999;
-        //     let minDiffIndex = -1;
-        //
-        //
-        //     for (let i = 0; i < floorRequests.length; i++) {
-        //         req = floorRequests[i];
-        //         const diff = Math.abs(req - currentFloor);
-        //         if (diff < minDiff) {
-        //             minDiff = diff;
-        //             minDiffIndex = i;
-        //         }
-        //     }
-        //
-        //     if (minDiffIndex != -1) {
-        //         const dest = floorRequests[minDiffIndex];
-        //
-        //         removeFloorRequest(dest);
-        //
-        //
-        //         goToFloor(elevator, dest, true);
-        //     }
-        //
-        // };
-        //
-        // const isBetween = (check, start, end) => {
-        //     return (check > start && check < end) ||
-        //
-        //         (check > end && check < start );
-        // }
-        //
-        // const goToPassengerRequest = (elevator, dest) => {
-        //
-        //     // Check if there are floor requests on the way.
-        //     /*
-        //     const currentFloor = elevator.currentFloor();
-        //
-        //     const sortedRequests = [...floorRequests].sort((r1, r2) => (r1 - r2) * ( currentFloor < dest ? 1 : -1));
-        //
-        //
-        //     let nextDestination = dest;
-        //
-        //     for (const r of sortedRequests) {
-        //         if (isBetween(r, currentFloor, dest)) {
-        //             nextDestination = r;
-        //             removeFloorRequest(r);
-        //         }
-        //     }
-        //     */
-        //
-        //
-        //     goToFloor(elevator, dest, true);
-        // }
-        //
-        // const goToPressedFloors = (elevator) => {
-        //     const pressedFloors = [ ...elevator.getPressedFloors()];
-        //     if (!pressedFloors.length) {
-        //         return;
-        //     }
-        //
-        //     const sortedPressedFloors = pressedFloors.sort();
-        //
-        //     const minPressedFloor = sortedPressedFloors[0];
-        //     const maxPressedFloor = sortedPressedFloors[sortedPressedFloors.length - 1];
-        //     const currentFloor = elevator.currentFloor();
-        //
-        //     // Check if we are closer to the top or bottom;
-        //     const diffToBottom = Math.abs(currentFloor - minPressedFloor);
-        //     const diffToTop = Math.abs(currentFloor - maxPressedFloor);
-        //
-        //     let dest = currentFloor;
-        //
-        //     if (diffToBottom < diffToTop) {
-        //         // going to the first lower than current
-        //         for (let i = sortedPressedFloors.length - 1; i >= 0; i--) {
-        //             const floor = sortedPressedFloors[i];
-        //             if (floor < currentFloor) {
-        //                 dest = floor;
-        //                 break;
-        //             }
-        //         }
-        //         if(dest === currentFloor) {
-        //             dest = sortedPressedFloors[0];
-        //         }
-        //
-        //     } else if (diffToTop < diffToBottom) {
-        //         // going to the first higher than current
-        //         for (let i = 0; i < sortedPressedFloors.length; i++) {
-        //             const floor = sortedPressedFloors[i];
-        //             if (floor > currentFloor) {
-        //                 dest = floor;
-        //                 break;
-        //             }
-        //         }
-        //         if(dest === currentFloor) {
-        //             dest = sortedPressedFloors[ sortedPressedFloors.length - 1];
-        //         }
-        //     } else {
-        //         // diff equal, go to the closest one
-        //
-        //         let minDiff = 99999;
-        //         let minDiffFloor = -1;
-        //
-        //         for (const pressed of sortedPressedFloors) {
-        //             const diff = Math.abs(currentFloor, pressed);
-        //             if (diff < minDiff) {
-        //                 minDiff = diff;
-        //                 minDiffFloor = pressed;
-        //             }
-        //         }
-        //
-        //         dest = minDiffFloor;
-        //     }
-        //
-        //     goToPassengerRequest(elevator, dest);
-        // };
-        //
+
         const isStopped = (elevator) => {
             return elevator.destinationDirection() == 'stopped';
         };
@@ -157,14 +49,6 @@
             clearTimeout(buttonPressedTimeouts[index]);
             buttonPressedTimeouts[index] = null;
         }
-
-        // const enqueueDestination = (elevator, floorNum) => {
-        //     const queue = elevator.destinationQueue;
-        //     if (!queue.includes(floorNum)) {
-        //         goToFloor(elevator, floorNum);
-        //     }
-        //
-        // }
 
         const getRoute = (elevator) => {
 
@@ -214,6 +98,7 @@
 
             elevator.destinationQueue = route;
             elevator.checkDestinationQueue();
+            updateLights(elevator);
         };
 
         const waitForAllButtonPressesThenGo = (elevator) => {
@@ -330,6 +215,7 @@
             });
 
             elevator.on("stopped_at_floor", function (floorNum) {
+                updateLights(elevator);
                 clearRequestsForFloor(elevator, floorNum);
             });
         };
@@ -344,9 +230,7 @@
 
 
     },
-        update
-:
-    (dt, elevators, floors) => {
+        update: (dt, elevators, floors) => {
         // We normally don't need to do anything here
     }
 }
